@@ -86,13 +86,15 @@ A full step-by-step guide is available in **[MANUAL.md](MANUAL.md)**.
 
 ## Screenshots
 
-_Add your screenshots to a `docs/` folder and reference them here, e.g.:_
+<img width="1106" height="902" alt="image" src="https://github.com/user-attachments/assets/0ee83f38-0d7e-4ee8-bb5d-2e8e58f952fc" />
 
-```
-![Text editor](docs/text_editor.png)
-![Quest map editor](docs/quest_map.png)
-![VGA editor](docs/vga_editor.png)
-```
+<img width="1097" height="901" alt="image" src="https://github.com/user-attachments/assets/9e88900e-4cb1-40aa-b82b-8361ce7bf12a" />
+
+<img width="1101" height="900" alt="image" src="https://github.com/user-attachments/assets/2dc8fb6d-b7eb-4e12-90b3-9c397d868984" />
+
+<img width="1100" height="902" alt="image" src="https://github.com/user-attachments/assets/118d2e22-6d71-4667-a649-93ac4872d1cf" />
+
+<img width="1103" height="767" alt="image" src="https://github.com/user-attachments/assets/8528654d-1d73-4540-b599-c0ecad164c07" />
 
 ---
 
