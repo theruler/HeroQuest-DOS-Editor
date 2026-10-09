@@ -60,7 +60,7 @@ A full step-by-step guide is available in **[MANUAL.md](MANUAL.md)**.
 - **Import image** (PNG, BMP, JPG, GIF — quantized to the active palette) and **Export PNG**.
 - Paste images from the system **clipboard**.
 
-### Sound effects editor (`.ALB`, `.RLD`)
+### Sound effects editor (`.ALB`, `.RLD`) - EXPERIMENTAL
 - Browse the effects stored in **AdLib/OPL2 (ALB)** and **Roland MT-32 / GM (RLD)** sound banks.
 - **Play** an approximate synthesized preview.
 - **Extract** an effect as raw binary or as a WAV preview, and **import** a replacement effect.
