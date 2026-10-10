@@ -29,7 +29,7 @@ A full step-by-step guide is available in **[MANUAL.md](MANUAL.md)**.
 
 ### General
 - **Automatic file detection**: just open (or drag & drop) a game file and the editor picks the right mode.
-- **Transparent compression**: `.BIN` and `.VGA` files are decompressed on load and recompressed on save through the bundled `dec.exe` / `enc.exe`. `.UNP` (uncompressed) variants are supported too.
+- **Transparent compression**: `.BIN` and `.VGA` files are ompressed on load and recompressed on save. `.UNP` (uncompressed) variants are supported too.
 - **Unlimited Undo / Redo** for every editing mode.
 - **Unsaved-changes protection** when opening another file or closing the program.
 - **Drag & drop** loading (via `tkinterdnd2`, optional).
@@ -100,7 +100,6 @@ A full step-by-step guide is available in **[MANUAL.md](MANUAL.md)**.
 
 ## Requirements
 
-- **Windows** (the bundled `enc.exe` / `dec.exe` are Windows executables and are required to open/save compressed `.BIN` / `.VGA` files).
 - **Python 3.8+** with Tkinter (only if running from source).
 - [Pillow](https://pypi.org/project/pillow/)
 - [tkinterdnd2](https://pypi.org/project/tkinterdnd2/) *(optional, enables drag & drop)*
@@ -173,7 +172,6 @@ python -m pip install --upgrade pyinstaller pillow tkinterdnd2
 python -m PyInstaller --noconfirm --clean --onefile --windowed ^
   --name HeroQuestEditor ^
   --collect-all tkinterdnd2 ^
-  --add-data "enc.exe;." --add-data "dec.exe;." ^
   --add-data "heroquest.fnt;." ^
   --add-data "background1.png;." --add-data "background2.png;." --add-data "background3.png;." ^
   --paths . main.py
@@ -200,6 +198,7 @@ data/
 ├── editor_quest_map.py  # Quest map / monsters / furniture / events editor
 ├── editor_vga.py        # VGA image and sprite editor
 ├── editor_fx.py         # Sound effects (ALB / RLD) editor
+├── encoder.py           # Game compression helpers
 ├── editor_lists.py      # Left-hand list population and status bar
 ├── models/
 │   ├── hq_bin.py        # Language BIN files
@@ -209,7 +208,6 @@ data/
 │   ├── hq_quest_exe.py  # QUEST.EXE
 │   ├── hq_vga.py        # VGA images, sprites, palettes
 │   └── hq_fx.py         # ALB / RLD sound banks
-├── enc.exe / dec.exe    # Game compression tools
 ├── heroquest.fnt        # Original bitmap font
 ├── background1-3.png    # Preview backgrounds
 └── build.bat            # PyInstaller build script
@@ -221,7 +219,7 @@ data/
 
 | Problem | Solution |
 |---|---|
-| "Files missing" dialog at start | `enc.exe`, `dec.exe`, `heroquest.fnt` and the three `background*.png` must sit next to `main.py` (or be bundled with `--add-data`). |
+| "Files missing" dialog at start | `heroquest.fnt` and the three `background*.png` must sit next to `main.py` (or be bundled with `--add-data`). |
 | "File unsupported" / wrong mode | Make sure the file is an original, unmodified HeroQuest DOS file with its original name. |
 | Drag & drop does not work | Install `tkinterdnd2`; when building, use `--collect-all tkinterdnd2`. |
 | Black console window flashes | Use `--windowed` when building; the editor already hides the `enc/dec` console. |
