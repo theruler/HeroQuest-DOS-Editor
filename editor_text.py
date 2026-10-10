@@ -18,7 +18,7 @@ from config import (
     MAX_ROW, MAX_COL, MIN_ROW, MIN_COL, DRAG_THRESHOLD, FILE_TYPES
 )
 from utils import (
-    CHAR_DECODE, is_compressed_file, is_known_language_file, run_exe, encode_text, decode_text,
+    CHAR_DECODE, is_compressed_file, is_known_language_file, encode_text, decode_text,
     draw_cylinder_roll, _draw_grid, load_dynamix_font_file
 )
 from models import (

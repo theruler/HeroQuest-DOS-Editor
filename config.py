@@ -19,7 +19,7 @@ MIN_ROW     = 2
 MAX_COL     = GRID_COLS - 3
 MAX_ROW     = GRID_ROWS - 2
 DRAG_THRESHOLD  = 4
-REQUIRED_FILES  = ["enc.exe", "dec.exe", "heroquest.fnt", "background1.png", "background2.png", "background3.png"]
+REQUIRED_FILES  = ["heroquest.fnt", "background1.png", "background2.png", "background3.png"]
 
 
 PAL = {

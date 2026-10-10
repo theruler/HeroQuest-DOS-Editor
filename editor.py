@@ -17,8 +17,9 @@ from config import (
     PAL, CELL, GRID_COLS, GRID_ROWS, GLYPH_COLORS, GLYPH_RANGE,
     MAX_ROW, MAX_COL, MIN_ROW, MIN_COL, DRAG_THRESHOLD, FILE_TYPES, resource_path
 )
+from encoder import compress
 from utils import (
-    CHAR_DECODE, is_compressed_file, is_known_language_file, run_exe, encode_text, decode_text,
+    CHAR_DECODE, is_compressed_file, is_known_language_file, encode_text, decode_text,
     draw_cylinder_roll, _draw_grid, load_dynamix_font_file
 )
 from models import (
@@ -160,7 +161,7 @@ class Editor(VgaEditorMixin, QuestMapEditorMixin, ListsEditorMixin, TextEditorMi
         self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
 
     def _build_ui(self):
-        self.root.title("HeroQuest Editor v6.8 — by TheRuler")
+        self.root.title("HeroQuest Editor v6.8.14 — by TheRuler76")
         self.root.configure(bg=PAL["bg"])
         self.root.minsize(1100, 660)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
@@ -504,7 +505,7 @@ class Editor(VgaEditorMixin, QuestMapEditorMixin, ListsEditorMixin, TextEditorMi
             else:
                 raw_data = self.hq.rebuild()
                 is_bin   = is_compressed_file(path)
-                data     = run_exe("enc.exe", raw_data) if is_bin else raw_data
+                data     = compress(raw_data) if is_bin else raw_data
                 msg      = f"New file size: {len(data)} bytes"
                 with open(path, "wb") as f:
                     f.write(data)

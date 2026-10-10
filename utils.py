@@ -1,6 +1,4 @@
 import os
-import subprocess
-import tempfile
 from config import (
     COMPRESSED_FILES, UNCOMPRESSED_FILES, KNOWN_DATA_FILES, KNOWN_LANGUAGE_FILES,
     CELL, GRID_COLS, GRID_ROWS, PAL, resource_path
@@ -39,28 +37,6 @@ def is_known_data_file(path):
 
 def is_known_language_file(path):
     return os.path.basename(path).upper() in KNOWN_LANGUAGE_FILES
-
-def run_exe(exe_name, data: bytes) -> bytes:
-    exe_path = resource_path(exe_name)
-    with tempfile.NamedTemporaryFile(delete=False) as fin:
-        fin.write(data)
-        fin_path = fin.name
-    fout_path = fin_path + ".out"
-    try:
-        kw = {}
-        if os.name == "nt":
-            kw["creationflags"] = 0x08000000  # CREATE_NO_WINDOW: niente finestra nera
-        subprocess.run([exe_path, fin_path, fout_path], check=True,
-                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, **kw)
-        with open(fout_path, "rb") as f:
-            return f.read()
-    finally:
-        for p in (fin_path, fout_path):
-            try:
-                os.remove(p)
-            except Exception:
-                pass
 
 def load_dynamix_font_file(path):
     with open(path, "rb") as f:

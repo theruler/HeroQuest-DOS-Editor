@@ -1,5 +1,5 @@
 import os
-from utils import run_exe
+from encoder import compress, decompress
 
 VGA_WIDTH  = 320
 VGA_HEIGHT = 200
@@ -169,7 +169,7 @@ def _is_vga_file(path: str) -> bool:
     try:
         raw = open(path, "rb").read()
         try:
-            decompressed = run_exe("dec.exe", raw)
+            decompressed = decompress(raw)
         except Exception:
             decompressed = None
         if decompressed is not None and len(decompressed) == VGA_FULLSCREEN_SIZE:
@@ -202,7 +202,7 @@ class HQVgaFile(VgaPaletteMixin):
 
         self.is_compressed = True
         try:
-            decompressed = run_exe("dec.exe", raw)
+            decompressed = decompress(raw)
         except Exception:
             decompressed = None
 
@@ -235,7 +235,7 @@ class HQVgaFile(VgaPaletteMixin):
     def save(self, path: str):
         data = self.rebuild()
         if not os.path.basename(path).upper().endswith(".UNP"):
-            data = run_exe("enc.exe", data)
+            data = compress(data)
         with open(path, "wb") as f:
             f.write(data)
 
@@ -508,7 +508,7 @@ class HQMultiVgaFile(VgaPaletteMixin):
         else:
             self.is_compressed = True
             try:
-                decompressed = run_exe("dec.exe", raw)
+                decompressed = decompress(raw)
             except Exception:
                 decompressed = None
 
@@ -631,7 +631,7 @@ class HQMultiVgaFile(VgaPaletteMixin):
     def save(self, path: str):
         data = self.rebuild()
         if not os.path.basename(path).upper().endswith(".UNP"):
-            data = run_exe("enc.exe", data)
+            data = compress(data)
         with open(path, "wb") as f:
             f.write(data)
 

@@ -1,6 +1,7 @@
 import struct
 import itertools
-from utils import decode_text, encode_text, is_compressed_file, run_exe
+from utils import decode_text, encode_text, is_compressed_file
+from encoder import decompress
 from config import PTR_COUNT, HEADER_SIZE, MAX_SIZE
 
 def _find_aaaa(data, p, limit=32):
@@ -203,7 +204,7 @@ class HQFile:
         raw = open(path, "rb").read()
         self.is_compressed = is_compressed_file(path)
         if self.is_compressed:
-            raw = run_exe("dec.exe", raw)
+            raw = decompress(raw)
         self.raw = raw
 
         ptrs = struct.unpack(f"<{PTR_COUNT}H", self.raw[:HEADER_SIZE])
