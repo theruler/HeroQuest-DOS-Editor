@@ -1,38 +1,38 @@
 """
-Header (0x000-0x157, 344 byte)
-  0x00       3 byte  id/versione (RLD: word 0x9AB6 = magic per MT32.DRV)
-  0x03       nome bank ASCII ("ingame")
-  0x18..0x97 ORDER LIST: 128 byte, indice d'ordine -> numero di pattern
-  0x98..0x117 128 byte = 64 coppie (flag_slot, volume_default[0..0x40])
-              una per strumento (volume iniziale della nota, 0x40 = max)
-  0x118      numero di colonne melodiche (ALB 6, RLD 7)
-  0x11B      (solo ALB) numero di voci nella tabella canzoni
+Header (0x000-0x157, 344 bytes)
+  0x00       3 bytes id/version (RLD: word 0x9AB6 = magic for MT32.DRV)
+  0x03       ASCII bank name ("ingame")
+  0x18..0x97 ORDER LIST: 128 bytes, order index -> pattern number
+  0x98..0x117 128 bytes = 64 pairs (slot_flag, default_volume[0..0x40])
+              one per instrument (initial note volume, 0x40 = max)
+  0x118      number of melodic columns (ALB 6, RLD 7)
+  0x11B      (ALB only) number of entries in song table
 
-Tabella canzoni @0x158, 16 byte a voce (ALB: n da [0x11B]; RLD: 128 slot)
-  [0:10]  nome, [10] ordine iniziale (loop-start), [11] ordine finale
-  [12] flag loop (0 = suona una volta e si ferma), [13] n. di voci/canali
+Song table @0x158, 16 bytes per entry (ALB: n from [0x11B]; RLD: 128 slots)
+  [0:10]  name, [10] initial order (loop-start), [11] final order
+  [12] loop flag (0 = plays once and stops), [13] n. of voices/channels
 
-Tabella puntatori (subito dopo): word LE, in PARAGRAFI (16 byte), relativi
-all'INIZIO DELLA TABELLA STESSA. ALB: ((maxpat+1)*2 & 0xFFF0)+0x10 byte
-(termina con 0xFFFF); RLD: sempre 0x200 byte. Le prime maxpat+1 voci puntano
-ai pattern, la voce successiva punta alla banca strumenti (fino a EOF).
+Pointer table (immediately following): LE words, in PARAGRAPHS (16 bytes), relative
+to the START OF THE TABLE ITSELF. ALB: ((maxpat+1)*2 & 0xFFF0)+0x10 bytes
+(ends with 0xFFFF); RLD: always 0x200 bytes. The first maxpat+1 entries point
+to patterns, the next entry points to the instrument bank (up to EOF).
 
-Pattern = 64 righe, ciascuna:
-  ALB: word maschera (1 bit/colonna, MSB-first, ncol+5 bit: 6 melodiche +
-       5 ritmiche BD,SD,TOM,CYM,HH); per ogni bit a 1: cella da 4 byte
-       [nota MIDI, strumento (1-based), comando, parametro]
-  RLD: word maschera (2 bit/colonna, MSB-first); per colonna:
-       0 vuota | 1 [cmd,par] | 2 [nota,strumento] |
-       3 [n1,n2,n3,n4,strumento,cmd,par]   (fino a 4 note = accordo)
-  Comandi (stile ProTracker): 1/2 slide su/giu', 3 portamento, 4 vibrato
-  (stub), A slide volume, B salta all'ordine, C volume, D fine pattern,
-  F velocita' (tick per riga; tick = 50 Hz esatti, PIT 0x5D37).
-  Solo RLD: 5 pan, 6 all-notes-off, 7/8 riverbero.
+Pattern = 64 rows, each:
+  ALB: mask word (1 bit/column, MSB-first, ncol+5 bits: 6 melodic +
+       5 rhythmic BD,SD,TOM,CYM,HH); for each bit set to 1: 4-byte cell
+       [MIDI note, instrument (1-based), command, parameter]
+  RLD: mask word (2 bits/column, MSB-first); per column:
+       0 empty | 1 [cmd,par] | 2 [note,instrument] |
+       3 [n1,n2,n3,n4,instrument,cmd,par]   (up to 4 notes = chord)
+  Commands (ProTracker style): 1/2 slide up/down, 3 portamento, 4 vibrato
+  (stub), A volume slide, B jump to order, C volume, D pattern end,
+  F speed (ticks per row; tick = exact 50 Hz, PIT 0x5D37).
+  RLD only: 5 pan, 6 all-notes-off, 7/8 reverb.
 
-Strumenti:
-  ALB: 64 byte = nome[10] + modulatore[13] + portante[13] + wave_mod, wave_car
-       (13 = ksl,mult,fb,attack,sustain,eg,decay,release,livello,am,vib,ksr,conn)
-  RLD: 256 byte = patch[8] + nome[10] + common[4] + 4 partial MT-32 da 58 byte
+Instruments:
+  ALB: 64 bytes = name[10] + modulator[13] + carrier[13] + wave_mod, wave_car
+       (13 = ksl,mult,fb,attack,sustain,eg,decay,release,level,am,vib,ksr,conn)
+  RLD: 256 bytes = patch[8] + name[10] + common[4] + 4 MT-32 partials of 58 bytes
 """
 
 import os
@@ -162,7 +162,7 @@ class HQFxFile:
 
         self.songs = []
         for k in range(nsongs):
-            o = HQFxFile_entry = HEADER_TABLE_OFFSET + ENTRY_SIZE * k
+            o = HEADER_TABLE_OFFSET + ENTRY_SIZE * k
             e = data[o:o + ENTRY_SIZE]
             nm = e[:10].split(b"\0")[0].decode("latin1", "replace")
             if nm.strip().lower() == "not used" or not nm.strip():
@@ -188,18 +188,15 @@ class HQFxFile:
         pat_insts, pat_songs = self._usage()
         eff = []
         for s in self.songs:
-            kind = "musica" if self.song_is_music(s) else "effetto"
-            eff.append(FxEffect(len(eff), s.name, "song", s.pack(), ref_id=s.start,
-                                flag=s.nvoices, offset_in_table=s.offset,
-                                extra={"song": s, "tag": f"[slot {s.slot} · {kind}]"}))
+            kind = "music" if self.song_is_music(s) else "effect"
+            eff.append(FxEffect(len(eff), s.name, "song", s.pack(), ref_id=s.start, flag=s.nvoices, offset_in_table=s.offset, extra={"song": s, "tag": f"[slot {s.slot} · {kind}]"}))
         for k, p in enumerate(self.patterns):
             used_by = [i for i, v in enumerate(self.order) if v == k]
             sg = pat_songs[k]
-            tag = "→ " + (", ".join(sg[:2]) + ("…" if len(sg) > 2 else "") if sg else "(inutilizzato)")
+            tag = "→ " + (", ".join(sg[:2]) + ("…" if len(sg) > 2 else "") if sg else "(unused)")
             if len(sg) > 1:
-                tag += " ⚠condiviso"
-            eff.append(FxEffect(len(eff), f"PAT {k:02d}", "pattern", p, ref_id=k,
-                                flag=len(used_by), extra={"orders": used_by, "tag": f"[{tag}]"}))
+                tag += " ⚠shared"
+            eff.append(FxEffect(len(eff), f"PAT {k:02d}", "pattern", p, ref_id=k, flag=len(used_by), extra={"orders": used_by, "tag": f"[{tag}]"}))
         for k, p in enumerate(self.insts):
             users = [i for i in range(len(self.patterns)) if (k + 1) in pat_insts[i]]
             sg = []
@@ -207,11 +204,10 @@ class HQFxFile:
                 for n in pat_songs[i]:
                     if n not in sg:
                         sg.append(n)
-            tag = f"[{len(users)} pat · {len(sg)} suoni" + (" ⚠" if len(sg) > 1 else "") + "]"
+            tag = f"[{len(users)} pat · {len(sg)} sounds" + (" ⚠" if len(sg) > 1 else "") + "]"
             if self.kind == "rld" and k >= sum(1 for x in self.defflag if x):
-                tag = "[non caricato dal driver]"
-            eff.append(FxEffect(len(eff), f"INS {k + 1:02d} {self.inst_name(k)}", "inst", p,
-                                ref_id=k + 1, extra={"tag": tag}))
+                tag = "[not loaded by driver]"
+            eff.append(FxEffect(len(eff), f"INS {k + 1:02d} {self.inst_name(k)}", "inst", p, ref_id=k + 1, extra={"tag": tag}))
         self.effects = eff
 
     def inst_name(self, k):
@@ -330,8 +326,7 @@ class HQFxFile:
 
     def inst_params(self, k):
         d = self.insts[k]
-        r = {"name": bytes(d[0:10]).split(b"\0")[0].decode("latin1", "replace"),
-             "wave_mod": d[36] & 3, "wave_car": d[37] & 3, "vol": self.defvol[k]}
+        r = {"name": bytes(d[0:10]).split(b"\0")[0].decode("latin1", "replace"), "wave_mod": d[36] & 3, "wave_car": d[37] & 3, "vol": self.defvol[k]}
         for key, base in (("mod", 10), ("car", 23)):
             r[key] = {n: d[base + i] for i, (n, lo, hi) in enumerate(OPL_PARAMS)}
         return r
@@ -361,9 +356,9 @@ class HQFxFile:
 
     def add_instrument(self, params64=None, name="NEW", vol=0x40):
         if self.kind != "alb":
-            raise ValueError("Nuovi strumenti: solo bank ALB (i timbri MT-32 hanno un formato proprio).")
+            raise ValueError("New instruments: ALB banks only (MT-32 timbres have their own format).")
         if len(self.insts) >= 64:
-            raise ValueError("Massimo 64 strumenti.")
+            raise ValueError("Maximum 64 instruments.")
         rec = bytearray(params64 if params64 else DEFAULT_INST)
         rec[0:10] = name.encode("latin1", "replace")[:10].ljust(10, b"\0")
         self.insts.append(rec)
@@ -374,9 +369,9 @@ class HQFxFile:
 
     def add_effect_song(self, name, inst_no, note, seconds, speed=6):
         if self.kind != "alb":
-            raise ValueError("Nuovi effetti: solo bank ALB.")
+            raise ValueError("New effects: ALB banks only.")
         if not self._free_slots:
-            raise ValueError("Nessuno slot canzone libero ('Not Used').")
+            raise ValueError("No free song slot ('Not Used').")
         rows = max(2, int(round(seconds / (speed * 0.02))) + 1)
         rows = min(rows, 60)
         txt = [f"00  [0] {note_name(note)} i{inst_no:02d} 000  [1] --- i00 F{speed:02X}",
@@ -412,13 +407,12 @@ class HQFxFile:
         L = []
         if e.kind == "song":
             s = e.extra["song"]
-            L.append(f"CANZONE '{s.name}': ordini {s.start}..{s.end}, voci {s.nvoices}, "
-                     f"{'loop' if s.loop else 'una volta sola'}")
+            L.append(f"SONG '{s.name}': orders {s.start}..{s.end}, voices {s.nvoices}, "
+                     f"{'loop' if s.loop else 'play once'}")
             for o in range(s.start, s.end + 1):
                 p = self.order[o]
                 ins = self.pattern_insts(p)
-                L.append(f"  ordine {o:3d} -> PAT {p:02d} -> strumenti "
-                         + (", ".join(f"{i}:{self.inst_name(i - 1)}" for i in ins if i <= len(self.insts)) or "-"))
+                L.append(f"  order {o:3d} -> PAT {p:02d} -> instruments " + (", ".join(f"{i}:{self.inst_name(i - 1)}" for i in ins if i <= len(self.insts)) or "-"))
         elif e.kind == "pattern":
             k = e.ref_id
             ords = [i for i, v in enumerate(self.order[:64]) if v == k and (i < 39 or True)]
@@ -426,20 +420,20 @@ class HQFxFile:
             for s in self.songs:
                 if any(s.start <= o <= s.end for o in ords):
                     songs.append(s.name)
-            L.append(f"PATTERN {k:02d}: usato dagli ordini {ords or '-'} (canzoni: {', '.join(songs) or '-'})")
+            L.append(f"PATTERN {k:02d}: used by orders {ords or '-'} (songs: {', '.join(songs) or '-'})")
             ins = self.pattern_insts(k)
-            L.append("  suona gli strumenti: " + (", ".join(f"{i}:{self.inst_name(i - 1)}" for i in ins if i <= len(self.insts)) or "-"))
+            L.append("  plays instruments: " + (", ".join(f"{i}:{self.inst_name(i - 1)}" for i in ins if i <= len(self.insts)) or "-"))
         else:
             k = e.ref_id
-            L.append(f"STRUMENTO {k}: '{self.inst_name(k - 1)}'  volume iniziale {self.defvol[k - 1]}")
+            L.append(f"INSTRUMENT {k}: '{self.inst_name(k - 1)}'  initial volume {self.defvol[k - 1]}")
             pats = [p for p in range(len(self.patterns)) if k in self.pattern_insts(p)]
-            L.append("  usato dai pattern: " + (", ".join(f"{p:02d}" for p in pats) or "-"))
+            L.append("  used by patterns: " + (", ".join(f"{p:02d}" for p in pats) or "-"))
             songs = []
             for s in self.songs:
                 for o in range(s.start, s.end + 1):
                     if self.order[o] in pats and s.name not in songs:
                         songs.append(s.name)
-            L.append("  quindi dalle canzoni: " + (", ".join(songs) or "-"))
+            L.append("  thus by songs: " + (", ".join(songs) or "-"))
         return "\n".join(L)
 
     def impact_text(self, idx):
@@ -447,31 +441,31 @@ class HQFxFile:
         pat_insts, pat_songs = self._usage()
         if e.kind == "song":
             s = e.extra["song"]
-            kind = "MUSICA" if self.song_is_music(s) else "EFFETTO SONORO"
+            kind = "MUSIC" if self.song_is_music(s) else "SOUND EFFECT"
             pats = [self.order[o] for o in range(s.start, s.end + 1)]
             ins = sorted({i for p in pats for i in pat_insts[p]})
             return "\n".join([
-                f"{kind} «{s.name}» = slot {s.slot} della tabella canzoni. Il gioco la richiama dal suo NUMERO di slot, "
-                f"non dal nome (il nome e' solo un'etichetta).",
-                f"MODIFICABILE QUI: nome, ordine inizio ({s.start}) / fine ({s.end}), loop, numero di voci.",
-                f"COLLEGATO (non si modifica da qui): suona i pattern {', '.join(f'{p:02d}' for p in pats)} "
-                f"e usa gli strumenti {', '.join(str(i) for i in ins) or '-'}.",
-                "IN GIOCO: cambiare inizio/fine fa suonare ALTRI pattern a quello slot; i pattern e gli strumenti "
-                "restano com'erano e gli altri suoni non cambiano."])
+                f"{kind} «{s.name}» = slot {s.slot} of the song table. The game calls it by its slot NUMBER, "
+                f"not by name (the name is just a label).",
+                f"EDITABLE HERE: name, start order ({s.start}) / end order ({s.end}), loop, number of voices.",
+                f"LINKED (not edited here): plays patterns {', '.join(f'{p:02d}' for p in pats)} "
+                f"and uses instruments {', '.join(str(i) for i in ins) or '-'}.",
+                "IN GAME: changing start/end plays OTHER patterns at that slot; patterns and instruments "
+                "remain unchanged and other sound effects are not affected."])
         if e.kind == "pattern":
             k = e.ref_id
             sg = pat_songs[k]
             ords = [i for i, v in enumerate(self.order) if v == k and any(
                 s.start <= i <= s.end for s in self.songs)]
-            warn = (f"  ⚠ CONDIVISO con {len(sg)} suoni: ({', '.join(sg)}): la modifica si sente in TUTTI."
+            warn = (f"  ⚠ SHARED with {len(sg)} sound effects ({', '.join(sg)}): changes will be heard in ALL of them."
                     if len(sg) > 1 else "")
             return "\n".join([
-                f"PATTERN {k:02d} = 64 righe di note. Richiamato dagli ordini {ords or '-'} → suoni: "
-                f"{', '.join(sg) or 'nessuno (non si sente mai)'}." + warn,
-                "MODIFICABILE QUI: note, durata, volume (C), velocita' (F), slide, salti (B/D) — tutto il testo sotto.",
-                f"COLLEGATO: ogni cella ha un numero strumento iNN (qui: {', '.join(str(i) for i in sorted(pat_insts[k])) or '-'}). "
-                "Cambiare iNN sceglie UN ALTRO timbro per quella nota; NON modifica lo strumento.",
-                "IN GIOCO: cambia la melodia/ritmo/durata dei suoni che usano questo pattern."])
+                f"PATTERN {k:02d} = 64 rows of notes. Called by orders {ords or '-'} → sounds: "
+                f"{', '.join(sg) or 'none (never heard)'}." + warn,
+                "EDITABLE HERE: notes, duration, volume (C), speed (F), slides, jumps (B/D) — all text below.",
+                f"LINKED: each cell has an instrument number iNN (here: {', '.join(str(i) for i in sorted(pat_insts[k])) or '-'}). "
+                "Changing iNN selects ANOTHER timbre for that note; it does NOT modify the instrument.",
+                "IN GAME: changes the melody/rhythm/duration of sound effects using this pattern."])
         k = e.ref_id - 1
         users = [i for i in range(len(self.patterns)) if (k + 1) in pat_insts[i]]
         sg = []
@@ -479,19 +473,19 @@ class HQFxFile:
             for n in pat_songs[i]:
                 if n not in sg:
                     sg.append(n)
-        warn = f"  ⚠ USATO DA {len(sg)} SUONI ({', '.join(sg)}): ogni ritocco cambia TUTTE le loro note con questo timbro." if len(sg) > 1 else ""
+        warn = f"  ⚠ USED BY {len(sg)} SOUNDS ({', '.join(sg)}): any tweak changes ALL their notes with this timbre." if len(sg) > 1 else ""
         if self.kind == "rld":
             return "\n".join([
-                f"TIMBRO MT-32 n.{k + 1}: usato dai pattern {', '.join(f'{p:02d}' for p in users) or '-'} → {', '.join(sg) or 'nessun suono'}." + warn,
-                "MODIFICABILE: solo il nome qui; i parametri (partial, inviluppi, filtri) si cambiano con un editor di timbri MT-32 e reimportando il .bin.",
-                "IN GIOCO: sull'MT-32 cambia il suono delle note che usano questo timbro; la versione AdLib (ALB) NON cambia, e' un file separato."])
+                f"MT-32 TIMBRE #{k + 1}: used by patterns {', '.join(f'{p:02d}' for p in users) or '-'} → {', '.join(sg) or 'no sound'}." + warn,
+                "EDITABLE: only name here; parameters (partials, envelopes, filters) are changed with an MT-32 timbre editor and re-importing the .bin.",
+                "IN GAME: on MT-32 changes the sound of notes using this timbre; the AdLib version (ALB) DOES NOT change, it is a separate file."])
         return "\n".join([
-            f"STRUMENTO {k + 1} «{self.inst_name(k)}» = patch FM a 2 operatori (record di 64 byte). "
-            f"Usato dai pattern {', '.join(f'{p:02d}' for p in users) or '-'} → {', '.join(sg) or 'nessun suono'}." + warn,
-            "MODIFICABILE QUI: tutti i parametri OPL (griglia), forme d'onda, volume iniziale, nome.",
-            "COLLEGATO: i pattern lo richiamano per numero; non vengono toccati. Le NOTE non cambiano, cambia COME suonano.",
-            "IN GIOCO: solo nel bank ALB (AdLib). Per sentire l'effetto su un singolo suono, crea uno strumento nuovo "
-            "(＋ Strumento) e assegnalo a quel pattern invece di ritoccare uno condiviso."])
+            f"INSTRUMENT {k + 1} «{self.inst_name(k)}» = 2-operator FM patch (64-byte record). "
+            f"Used by patterns {', '.join(f'{p:02d}' for p in users) or '-'} → {', '.join(sg) or 'no sound'}." + warn,
+            "EDITABLE HERE: all OPL parameters (grid), waveforms, initial volume, name.",
+            "LINKED: patterns reference it by number; they are not touched. NOTES do not change, HOW they sound changes.",
+            "IN GAME: ALB bank (AdLib) only. To hear the effect on a single sound effect, create a new instrument "
+            "(＋ Instrument) and assign it to that pattern instead of tweaking a shared one."])
 
     def render_inst_note(self, k, note=60, seconds=1.5, rate=44100):
         if self.kind == "rld":
@@ -506,11 +500,11 @@ class HQFxFile:
         slot = slots[k] if k < len(slots) else k
         ev = [(0, bytes([0xC1, slot])), (0, bytes([0x91, note, 0x7F])),
               (int(seconds * 500 * 0.7), bytes([0xB1, 0x7B, 0]))]
-        self.last_channels, self.last_engine = 1, "MT-32 lite (numpy, approssimato)"
+        self.last_channels, self.last_engine = 1, "MT-32 lite (numpy, approximate)"
         if self.use_mt32emu:
             try:
                 pcm, sr = render_events_mt32emu(snap, ev, int(seconds * 500), rate, tail=1.5)
-                self.last_channels, self.last_engine = 2, "MT-32 FEDELE (mt32emu + ROM)"
+                self.last_channels, self.last_engine = 2, "MT-32 FAITHFUL (mt32emu + ROM)"
                 return pcm, sr
             except Mt32EmuError as ex:
                 self.last_fallback_reason = str(ex)
@@ -546,7 +540,7 @@ class HQFxFile:
 
     def _render_rld(self, e, rate, max_seconds):
         snap = RldSnapshot(self)
-        self.last_channels, self.last_engine = 1, "MT-32 lite (numpy, approssimato)"
+        self.last_channels, self.last_engine = 1, "MT-32 lite (numpy, approximate)"
         if e.kind == "song":
             s = e.extra["song"]
             song = (s.name, s.start, s.end, s.loop, s.nvoices)
@@ -560,7 +554,7 @@ class HQFxFile:
             try:
                 ev, end = rld_events(snap, order, song, max_seconds=max_seconds, one_pass=True, t0=0)
                 pcm, sr = render_events_mt32emu(snap, ev, end, rate)
-                self.last_channels, self.last_engine = 2, "MT-32 FEDELE (mt32emu + ROM)"
+                self.last_channels, self.last_engine = 2, "MT-32 FAITHFUL (mt32emu + ROM)"
                 return pcm, sr
             except Mt32EmuError as ex:
                 self.last_fallback_reason = str(ex)
@@ -597,7 +591,7 @@ class HQFxFile:
 
     def export_midi(self, path, song_name=None):
         if self.kind != "rld":
-            raise ValueError("L'export MIDI MT-32 e' disponibile solo per i bank RLD.")
+            raise ValueError("MT-32 MIDI export is available for RLD banks only.")
         snap = RldSnapshot(self)
         s = self.songs[0]
         if song_name:
@@ -616,7 +610,6 @@ OPL_PARAMS = [("ksl", 0, 3), ("mult", 0, 15), ("fb", 0, 7), ("attack", 0, 15), (
 DEFAULT_INST = bytes(b"NEW\0\0\0\0\0\0\0" + bytes([0, 1, 0, 15, 0, 0, 4, 6, 40, 0, 0, 0, 0])
                      + bytes([0, 1, 0, 15, 4, 0, 5, 6, 63, 0, 0, 0, 0]) + bytes([0, 0]) + bytes(26))
 
-
 def note_name(n):
     return "---" if not n else f"{NOTE_NAMES[n % 12]:-<2}{n // 12 - 1}"
 
@@ -627,11 +620,11 @@ def parse_note(tok):
         return 0
     m = re.fullmatch(r"([A-Ga-g])([-#])(-?\d)", tok)
     if not m:
-        raise ValueError(f"nota non valida: '{tok}' (usa es. C-4, F#3)")
+        raise ValueError(f"invalid note: '{tok}' (use e.g. C-4, F#3)")
     idx = NOTE_NAMES.index(m.group(1).upper() + ("#" if m.group(2) == "#" else ""))
     v = (int(m.group(3)) + 1) * 12 + idx
     if not 12 <= v <= 107:
-        raise ValueError(f"nota fuori range: {tok}")
+        raise ValueError(f"note out of range: {tok}")
     return v
 
 
@@ -644,23 +637,23 @@ def encode_pattern_text(text, kind, ncols):
             continue
         m = re.match(r"(\d+)\s+(.*)", line)
         if not m:
-            raise ValueError(f"riga {ln}: manca il numero di riga")
+            raise ValueError(f"line {ln}: missing line number")
         r = int(m.group(1))
         if not 0 <= r < 64:
-            raise ValueError(f"riga {ln}: numero riga {r} fuori da 0..63")
+            raise ValueError(f"line {ln}: line number {r} out of range 0..63")
         cells = {}
         for cm in re.finditer(r"\[(\d+)\]\s+((?:\S+\s+)*?)i(\d+)\s+([0-9A-Fa-f])([0-9A-Fa-f]{2})", m.group(2)):
             c = int(cm.group(1))
             lim = ncols + 5 if kind == "alb" else ncols
             if c >= lim:
-                raise ValueError(f"riga {ln}: colonna {c} (max {lim - 1})")
+                raise ValueError(f"line {ln}: column {c} (max {lim - 1})")
             notes = [parse_note(t) for t in cm.group(2).split()]
             if kind == "alb" and len(notes) > 1:
-                raise ValueError(f"riga {ln}: nel formato ALB una cella ha una sola nota")
+                raise ValueError(f"line {ln}: in ALB format a cell can only have one note")
             notes = (notes + [0, 0, 0, 0])[:4]
             cells[c] = (notes, int(cm.group(3)), int(cm.group(4), 16), int(cm.group(5), 16))
         if m.group(2).strip() and not cells:
-            raise ValueError(f"riga {ln}: nessuna cella riconosciuta")
+            raise ValueError(f"line {ln}: no recognized cell")
         rows[r] = cells
     out = bytearray()
     for r in range(64):
@@ -727,8 +720,7 @@ def render_inst_pcm(inst64, defvol, note, seconds, rate=44100, backend=None):
             out.append(cells)
         return out
     sn.rows = rows_
-    pcm = render_alb(sn, [0], ("t", 0, 0, 0, 1), max_seconds=seconds + 1, speed=6,
-                     stop_after_rows=rows, backend=backend)
+    pcm = render_alb(sn, [0], ("t", 0, 0, 0, 1), max_seconds=seconds + 1, speed=6, stop_after_rows=rows, backend=backend)
     return _resample_s16(pcm, OPL_RATE, rate), rate
 
 
@@ -742,7 +734,7 @@ def fit_wav_to_inst(samples, sr, progress=None, iters=160, seed=1):
     thr = 0.03
     nz = np.nonzero(np.abs(x) > thr)[0]
     if not len(nz):
-        raise ValueError("WAV silenzioso")
+        raise ValueError("Silent WAV")
     x = x[nz[0]:nz[0] + int(1.5 * sr)]
     t = np.arange(len(x)) / sr
     x49 = np.interp(np.arange(int(len(x) * OPL_RATE / sr)) * (sr / OPL_RATE), np.arange(len(x)), x)
@@ -838,7 +830,7 @@ def _is_fx_file(path: str) -> bool:
 
 
 def synthesize_preview_wav(chunk: bytes, kind: str, sample_rate=22050) -> bytes:
-    raise NoSynthError("Usa HQFxFile.render_effect_pcm(index).")
+    raise NoSynthError("Use HQFxFile.render_effect_pcm(index).")
 
 
 def _resample_s16(pcm, rate_in, rate_out):
@@ -2059,8 +2051,8 @@ class Mt32Emu:
         try:
             L = self.L = ctypes.CDLL(lib_path)
         except OSError as e:
-            raise Mt32EmuError(f"libreria mt32emu non caricabile ({e}). Su Windows deve avere "
-                               f"la stessa architettura di Python (64 bit).")
+            raise Mt32EmuError(f"mt32emu library failed to load ({e}). On Windows it must have "
+                               f"the same architecture as Python (64-bit).")
         vp, u32 = ctypes.c_void_p, ctypes.c_uint32
         L.mt32emu_create_context.restype = vp
         L.mt32emu_create_context.argtypes = [vp, vp]
@@ -2095,7 +2087,7 @@ class _Mt32Session:
         L = self.L
         self.ctx = L.mt32emu_create_context(None, None)
         if not self.ctx:
-            raise Mt32EmuError("mt32emu_create_context ha fallito")
+            raise Mt32EmuError("mt32emu_create_context failed")
         added = 0
         for p in _rom_candidates():
             rc = L.mt32emu_add_rom_file(self.ctx, p.encode(sys.getfilesystemencoding() or "utf-8"))
@@ -2106,10 +2098,10 @@ class _Mt32Session:
         if rc != 0:
             L.mt32emu_free_context(self.ctx)
             self.ctx = None
-            why = {-4: "ROM mancanti o incompleti (servono CONTROL + PCM della stessa macchina: "
-                       "MT-32 o CM-32L)", -1: "ROM non riconosciute", -2: "file ROM non trovato"}
-            raise Mt32EmuError(why.get(rc, f"open_synth codice {rc}") +
-                               f" — ROM valide aggiunte: {added}, cartelle: {_search_dirs()[:3]}")
+            why = {-4: "ROMs missing or incomplete (requires CONTROL + PCM for the same device: "
+                       "MT-32 or CM-32L)", -1: "Unrecognized ROMs", -2: "ROM file not found"}
+            raise Mt32EmuError(why.get(rc, f"open_synth code {rc}") +
+                               f" — Valid ROMs added: {added}, folders: {_search_dirs()[:3]}")
         self.rate = int(L.mt32emu_get_actual_stereo_output_samplerate(self.ctx)) or int(rate)
         self.chunks = []
 
@@ -2163,8 +2155,8 @@ _EMU_CACHE = {}
 def get_mt32emu():
     lib = _find_lib()
     if not lib:
-        raise Mt32EmuError("libreria mt32emu non trovata (mt32emu.dll / libmt32emu.so): "
-                           "mettila nella cartella 'mt32' accanto all'editor")
+        raise Mt32EmuError("mt32emu library not found (mt32emu.dll / libmt32emu.so): "
+                           "place it in the 'mt32' directory next to the editor")
     if lib not in _EMU_CACHE:
         _EMU_CACHE[lib] = Mt32Emu(lib)
     return _EMU_CACHE[lib]
