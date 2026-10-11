@@ -1,18 +1,18 @@
 """
-Mixin editor per i bank sonori ALB/RLD (HQFxFile).
+Sound bank editor mixin for ALB/RLD (HQFxFile).
 
-Cosa c'e' dentro il bank (vedi hq_fx.py):
-  ♫ canzone  -> elenco di ORDINI -> ogni ordine indica un PATTERN
-  ▦ pattern  -> 64 righe di celle [nota, strumento, comando, parametro]
-  ♪ strumento-> patch FM a 2 operatori (ALB) o timbro MT-32 (RLD)
-Un "effetto sonoro" e' una canzone di 1 solo pattern. Le voci del listbox
-sono quindi canzoni, pattern e strumenti; la barra sotto mostra come sono
-collegati.
+Bank contents (see hq_fx.py):
+  ♫ song     -> list of ORDERS -> each order points to a PATTERN
+  ▦ pattern  -> 64 rows of cells [note, instrument, command, parameter]
+  ♪ instrument-> 2-operator FM patch (ALB) or MT-32 timbre (RLD)
+A "sound effect" is a song consisting of only 1 pattern. The listbox items
+are therefore songs, patterns, and instruments; the panel below shows how they
+are linked.
 
-Play: tutto interno, nessun player esterno ne' Munt.
- ALB -> emulazione OPL2 (pyopl se installato, altrimenti fallback numpy).
- RLD -> sintetizzatore 'MT-32 lite' in numpy che usa i parametri reali dei
- timbri (senza la ROM PCM: approssimato). Per l'MT-32 esatto: ⇩ MIDI.
+Play: all internal, no external player or Munt required.
+ ALB -> OPL2 emulation (pyopl if installed, otherwise numpy fallback).
+ RLD -> 'MT-32 lite' synthesizer in numpy using real timbre parameters
+ (without PCM ROM: approximation). For exact MT-32: ⇩ MIDI.
 """
 
 import os
@@ -59,11 +59,11 @@ FX_FILE_TYPES = [
 ]
 
 _PARAM_LABELS = {"ksl": "KSL", "mult": "MULT", "fb": "FB", "attack": "ATK", "sustain": "SUS",
-                 "eg": "EG", "decay": "DEC", "release": "REL", "level": "LIV",
+                 "eg": "EG", "decay": "DEC", "release": "REL", "level": "LVL",
                  "am": "AM", "vib": "VIB", "ksr": "KSR", "conn": "CON"}
-_PARAM_HELP = ("ATK/DEC/REL: 0=lento..15=veloce   SUS: 0=forte..15=piano   LIV: 63=massimo   "
-               "MULT: multiplo della frequenza   FB: feedback (solo modulatore)   "
-               "EG=1: nota sostenuta fino al key-off   CON e FB portante sono ignorati dal driver")
+_PARAM_HELP = ("ATK/DEC/REL: 0=slow..15=fast   SUS: 0=loud..15=soft   LVL: 63=maximum   "
+               "MULT: frequency multiplier   FB: feedback (modulator only)   "
+               "EG=1: sustained note until key-off   CON and carrier FB are ignored by the driver")
 
 class _Player:
     def __init__(self):
@@ -99,7 +99,7 @@ class _Player:
                     return
                 except FileNotFoundError:
                     continue
-            raise RuntimeError("Nessun player audio trovato (paplay/aplay/ffplay).")
+            raise RuntimeError("No audio player found (paplay/aplay/ffplay).")
 
     def open_file(self, path):
         system = platform.system()
@@ -131,7 +131,7 @@ def _read_wav_float(path):
     elif sw == 4:
         x = np.frombuffer(raw, "<i4").astype(np.float64) / (1 << 31)
     else:
-        raise ValueError("WAV non supportato (usa PCM 8/16/24/32 bit)")
+        raise ValueError("Unsupported WAV (use 8/16/24/32-bit PCM)")
     if ch > 1:
         x = x.reshape(-1, ch).mean(axis=1)
     return x, sr
@@ -143,8 +143,8 @@ class FxEditorMixin:
         _load_mt32_cfg()
         self.hq_fx.load(path)
         h = self.hq_fx
-        return (f"fx | {h.kind.upper()} bank \"{h.bank_name}\" | {len(h.songs)} canzoni, "
-                f"{len(h.patterns)} pattern, {len(h.insts)} strumenti")
+        return (f"fx | {h.kind.upper()} bank \"{h.bank_name}\" | {len(h.songs)} songs, "
+                f"{len(h.patterns)} patterns, {len(h.insts)} instruments")
 
     def fx_list_items(self):
         return [eff.label for eff in self.hq_fx.effects]
@@ -178,20 +178,18 @@ class FxEditorMixin:
         bar.pack(fill=tk.X)
         items = [("▶ Play", self._fx_play), ("■ Stop", _PLAYER.stop),
                  ("⇩ WAV", self._fx_extract_wav), ("⇩ MIDI", self._fx_export_midi),
-                 ("⇧ WAV → strumento", self._fx_import_wav_inst),
-                 ("＋ Effetto da WAV", self._fx_new_from_wav),
-                 ("＋ Strumento", self._fx_new_inst),
+                 ("⇧ WAV → instrument", self._fx_import_wav_inst),
+                 ("＋ Effect from WAV", self._fx_new_from_wav),
+                 ("＋ Instrument", self._fx_new_inst),
                  ("bin ⇩", self._fx_extract_bin), ("bin ⇧", self._fx_import),
                  ("MT-32 ROM…", self._fx_choose_mt32)]
         for i, (t, cmd) in enumerate(items):
             tk.Button(bar, text=t, command=cmd, **btn).pack(side=tk.LEFT, padx=3)
-        self._fx_impact = tk.Label(self._fx_panel, text="", font=("Consolas", 8), fg=PAL["box_txt"],
-                                   bg=PAL["toolbar"], justify=tk.LEFT, anchor="w", wraplength=1000)
+        self._fx_impact = tk.Label(self._fx_panel, text="", font=("Consolas", 8), fg=PAL["box_txt"], bg=PAL["toolbar"], justify=tk.LEFT, anchor="w", wraplength=1000)
         self._fx_impact.pack(fill=tk.X, pady=(6, 0))
         self._fx_detail = tk.Frame(self._fx_panel, bg=PAL["toolbar"])
         self._fx_detail.pack(fill=tk.X, pady=(6, 0))
-        self._fx_info_label = tk.Label(self._fx_panel, text="", font=("Consolas", 8),
-                                       fg=PAL["label"], bg=PAL["toolbar"], justify=tk.LEFT, anchor="w")
+        self._fx_info_label = tk.Label(self._fx_panel, text="", font=("Consolas", 8), fg=PAL["label"], bg=PAL["toolbar"], justify=tk.LEFT, anchor="w")
         self._fx_info_label.pack(fill=tk.X, pady=(6, 0))
         self._fx_wave = None
         self._fx_loading = False
@@ -236,7 +234,7 @@ class FxEditorMixin:
             p = h.inst_params(k)
             top = tk.Frame(self._fx_detail, bg=PAL["toolbar"])
             top.pack(fill=tk.X)
-            tk.Label(top, text="nome", **lab).pack(side=tk.LEFT)
+            tk.Label(top, text="name", **lab).pack(side=tk.LEFT)
             self._fx_vars = {}
             v = tk.StringVar(value=p["name"])
             self._fx_vars[("name", "")] = v
@@ -248,31 +246,28 @@ class FxEditorMixin:
             self._fx_spin(top, ("wave_mod", ""), "wave M", p["wave_mod"], 0, 3, lab)
             self._fx_spin(top, ("wave_car", ""), "wave C", p["wave_car"], 0, 3, lab)
             self._fx_note_var = tk.IntVar(value=60)
-            tk.Label(top, text="nota prova", **lab).pack(side=tk.LEFT, padx=(12, 2))
-            tk.Spinbox(top, from_=24, to=96, width=4, textvariable=self._fx_note_var,
-                       font=("Consolas", 9)).pack(side=tk.LEFT)
+            tk.Label(top, text="test note", **lab).pack(side=tk.LEFT, padx=(12, 2))
+            tk.Spinbox(top, from_=24, to=96, width=4, textvariable=self._fx_note_var, font=("Consolas", 9)).pack(side=tk.LEFT)
             grid = tk.Frame(self._fx_detail, bg=PAL["toolbar"])
             grid.pack(fill=tk.X, pady=(6, 0))
             for c, (n, lo, hi) in enumerate(hq_fx.OPL_PARAMS):
                 tk.Label(grid, text=_PARAM_LABELS[n], **lab).grid(row=0, column=c + 1)
-            for r, (op, title) in enumerate((("mod", "MODUL."), ("car", "PORTANTE"))):
+            for r, (op, title) in enumerate((("mod", "MODULATOR"), ("car", "CARRIER"))):
                 tk.Label(grid, text=title, **lab).grid(row=r + 1, column=0, sticky="e", padx=(0, 4))
                 for c, (n, lo, hi) in enumerate(hq_fx.OPL_PARAMS):
                     var = tk.IntVar(value=p[op][n])
                     self._fx_vars[(op, n)] = var
-                    sb = tk.Spinbox(grid, from_=lo, to=hi, width=3, textvariable=var,
-                                    font=("Consolas", 9), command=self._fx_param_changed)
+                    sb = tk.Spinbox(grid, from_=lo, to=hi, width=3, textvariable=var, font=("Consolas", 9), command=self._fx_param_changed)
                     sb.grid(row=r + 1, column=c + 1, padx=1, pady=1)
                     sb.bind("<Return>", lambda ev: self._fx_param_changed())
-            tk.Label(self._fx_detail, text=_PARAM_HELP, wraplength=980, justify=tk.LEFT,
-                     **lab).pack(fill=tk.X, pady=(4, 0))
+            tk.Label(self._fx_detail, text=_PARAM_HELP, wraplength=980, justify=tk.LEFT, **lab).pack(fill=tk.X, pady=(4, 0))
         elif eff.kind == "pattern":
             tk.Label(self._fx_detail, justify=tk.LEFT, anchor="w", wraplength=980,
-                     text="Una riga per riga-pattern:  RR  [colonna] NOTA iSTR CPP  — es.  00  [0] C-4 i01 C30   "
-                          "(C=comando: 0 nulla,1/2 slide,3 portamento,6 key-off,A vol-slide,B salta ordine,"
-                          "C volume,D fine,F velocita';  PP=parametro hex).  "
-                          + ("Colonne 0-5 voci, 6-10 BD/SD/TOM/CYM/HH." if h.kind == "alb"
-                             else "Piu' note in una cella = accordo."), **lab).pack(fill=tk.X)
+                     text="One line per pattern row:  RR  [column] NOTE iINS CPP  — e.g.  00  [0] C-4 i01 C30   "
+                          "(C=command: 0 none, 1/2 slide, 3 portamento, 6 key-off, A vol-slide, B jump order, "
+                          "C volume, D end, F speed;  PP=hex parameter).  "
+                          + ("Columns 0-5 voices, 6-10 BD/SD/TOM/CYM/HH." if h.kind == "alb"
+                             else "Multiple notes in a cell = chord."), **lab).pack(fill=tk.X)
             fr = tk.Frame(self._fx_detail, bg=PAL["toolbar"])
             fr.pack(fill=tk.X)
             self._fx_text = tk.Text(fr, height=9, font=("Consolas", 9), wrap="none")
@@ -281,8 +276,7 @@ class FxEditorMixin:
             self._fx_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
             sc.pack(side=tk.LEFT, fill=tk.Y)
             self._fx_text.insert("1.0", h.pattern_text(eff.ref_id))
-            tk.Button(self._fx_detail, text="✔ Applica testo al pattern", command=self._fx_apply_text,
-                      font=("Consolas", 9), bg=PAL["btn"], fg=PAL["text"]).pack(anchor="w", pady=(4, 0))
+            tk.Button(self._fx_detail, text="✔ Apply text to pattern", command=self._fx_apply_text, font=("Consolas", 9), bg=PAL["btn"], fg=PAL["text"]).pack(anchor="w", pady=(4, 0))
         elif eff.kind == "song":
             s = eff.extra["song"]
             row = tk.Frame(self._fx_detail, bg=PAL["toolbar"])
@@ -290,24 +284,22 @@ class FxEditorMixin:
             self._fx_vars = {}
             v = tk.StringVar(value=s.name)
             self._fx_vars[("sname", "")] = v
-            tk.Label(row, text="nome", **lab).pack(side=tk.LEFT)
+            tk.Label(row, text="name", **lab).pack(side=tk.LEFT)
             tk.Entry(row, textvariable=v, width=11, font=("Consolas", 9)).pack(side=tk.LEFT, padx=(4, 10))
-            for key, txt, val, hi in (("start", "ordine inizio", s.start, 127), ("end", "ordine fine", s.end, 127),
-                                      ("loop", "loop", s.loop, 1), ("nv", "voci", s.nvoices, 8)):
+            for key, txt, val, hi in (("start", "start order", s.start, 127), ("end", "end order", s.end, 127), ("loop", "loop", s.loop, 1), ("nv", "voices", s.nvoices, 8)):
                 self._fx_spin(row, ("song", key), txt, val, 0, hi, lab, cmd=self._fx_song_changed)
-            tk.Button(row, text="✔ Applica", command=self._fx_song_changed, font=("Consolas", 9),
-                      bg=PAL["btn"], fg=PAL["text"]).pack(side=tk.LEFT, padx=10)
+            tk.Button(row, text="✔ Apply", command=self._fx_song_changed, font=("Consolas", 9), bg=PAL["btn"], fg=PAL["text"]).pack(side=tk.LEFT, padx=10)
         else:
             tk.Label(self._fx_detail, justify=tk.LEFT, anchor="w", wraplength=980, **lab,
-                     text="Timbro MT-32: patch[8] + nome[10] + common[4] + 4 partial da 58 byte. "
-                          "Play = anteprima interna approssimata (niente ROM PCM); "
-                          "per modificarlo usa un editor di timbri MT-32 e importa il .bin.").pack(fill=tk.X)
+                     text="MT-32 Timbre: patch[8] + name[10] + common[4] + 4 partials of 58 bytes each. "
+                          "Play = internal approximate preview (no PCM ROM); "
+                          "to modify it use an MT-32 timbre editor and import the .bin.").pack(fill=tk.X)
         self._fx_loading = False
         self._fx_impact.config(text=self.hq_fx.impact_text(eff.index))
         self._fx_set_info(self.hq_fx.links(eff.index))
 
     def _fx_choose_mt32(self):
-        d = filedialog.askdirectory(title="Cartella con le ROM MT-32 (e, se serve, mt32emu.dll)")
+        d = filedialog.askdirectory(title="Folder with MT-32 ROMs (and mt32emu.dll if needed)")
         if not d:
             return
         lib = None
@@ -319,16 +311,15 @@ class FxEditorMixin:
         _save_mt32_cfg()
         kind, why = hq_fx.mt32_status()
         if kind == "emu":
-            messagebox.showinfo("MT-32", f"Emulatore reale attivo ({why}).\nIl Play dei bank RLD sara' fedele.")
+            messagebox.showinfo("MT-32", f"Real emulator active ({why}).\nRLD bank Playback will be faithful.")
         else:
-            messagebox.showwarning("MT-32", "Emulatore reale NON disponibile, uso il sintetizzatore 'lite'.\n\n" + why)
+            messagebox.showwarning("MT-32", "Real emulator NOT available, using 'lite' synthesizer.\n\n" + why)
 
     def _fx_spin(self, parent, key, text, val, lo, hi, lab, cmd=None):
         tk.Label(parent, text=text, **lab).pack(side=tk.LEFT, padx=(8, 2))
         var = tk.IntVar(value=val)
         self._fx_vars[key] = var
-        sb = tk.Spinbox(parent, from_=lo, to=hi, width=4, textvariable=var, font=("Consolas", 9),
-                        command=cmd or self._fx_param_changed)
+        sb = tk.Spinbox(parent, from_=lo, to=hi, width=4, textvariable=var, font=("Consolas", 9), command=cmd or self._fx_param_changed)
         sb.pack(side=tk.LEFT)
         sb.bind("<Return>", lambda ev: (cmd or self._fx_param_changed)())
 
@@ -397,12 +388,12 @@ class FxEditorMixin:
         try:
             test = hq_fx.encode_pattern_text(text, self.hq_fx.kind, self.hq_fx.ncols)
         except ValueError as e:
-            messagebox.showerror("Pattern non valido", str(e))
+            messagebox.showerror("Invalid Pattern", str(e))
             return
         self._push_undo()
         self.hq_fx.set_pattern_text(eff.ref_id, text)
         self._repopulate_keep(eff.index)
-        messagebox.showinfo("Pattern", f"Pattern {eff.ref_id:02d} aggiornato ({len(test)} byte).")
+        messagebox.showinfo("Pattern", f"Pattern {eff.ref_id:02d} updated ({len(test)} bytes).")
 
     def _repopulate_keep(self, idx):
         self._populate_list()
@@ -452,8 +443,7 @@ class FxEditorMixin:
                     x = np.frombuffer(pcm, "<i2")
                     self._fx_wave = x.reshape(-1, chans)[:, 0].astype("<i2").tobytes() if chans > 1 else pcm
                     self._render_fx()
-                    self._fx_set_info(f"▶ {engine}" + (f"  —  {why[:160]}" if why else "") + "\n" +
-                                      self.hq_fx.links(idx))
+                    self._fx_set_info(f"▶ {engine}" + (f"  —  {why[:160]}" if why else "") + "\n" + self.hq_fx.links(idx))
                 self._fx_ui(ui)
             except Exception as ex:
                 msg = str(ex)
@@ -473,9 +463,8 @@ class FxEditorMixin:
             return
         h = self.hq_fx
         c.create_text(10, 10, anchor="nw", fill=PAL["box_txt"], font=("Consolas", 13, "bold"), text=eff.name)
-        kinds = {"song": "canzione", "pattern": "pattern", "inst": "strumento"}
-        c.create_text(10, 34, anchor="nw", fill=PAL["label"], font=("Consolas", 9),
-                      text=f"bank {h.kind.upper()}   {kinds[eff.kind]}   {len(eff.data)} byte")
+        kinds = {"song": "song", "pattern": "pattern", "inst": "instrument"}
+        c.create_text(10, 34, anchor="nw", fill=PAL["label"], font=("Consolas", 9), text=f"bank {h.kind.upper()}   {kinds[eff.kind]}   {len(eff.data)} bytes")
         W = max(400, int(c.winfo_width() or 900)) - 20
         if eff.kind == "pattern":
             self._fx_draw_roll(c, eff.ref_id, 10, 60, W, 180)
@@ -510,13 +499,12 @@ class FxEditorMixin:
         rows = h.decode_pattern(k)
         notes = [n for r in rows for cell in r for n in cell[1:5] if n]
         if not notes:
-            c.create_text(x0, y0, anchor="nw", fill=PAL["label"], text="(pattern senza note)")
+            c.create_text(x0, y0, anchor="nw", fill=PAL["label"], text="(pattern without notes)")
             return
         lo, hi = min(notes) - 1, max(notes) + 1
         cw = w / 64.0
         ch = hgt / max(1, hi - lo + 1)
-        colors = ["#ff8f3d", "#4fc3f7", "#9ccc65", "#f06292", "#ffd54f", "#ba68c8", "#e57373", "#4db6ac",
-                  "#a1887f", "#90a4ae", "#fff176", "#80cbc4"]
+        colors = ["#ff8f3d", "#4fc3f7", "#9ccc65", "#f06292", "#ffd54f", "#ba68c8", "#e57373", "#4db6ac", "#a1887f", "#90a4ae", "#fff176", "#80cbc4"]
         c.create_rectangle(x0, y0, x0 + w, y0 + hgt, outline=PAL["label"])
         for ri, r in enumerate(rows):
             for cell in r:
@@ -525,7 +513,7 @@ class FxEditorMixin:
                         y = y0 + (hi - n) * ch
                         c.create_rectangle(x0 + ri * cw, y, x0 + (ri + 1) * cw - 1, y + max(2, ch - 1), fill=colors[cell[0] % len(colors)], outline="")
         c.create_text(x0, y0 + hgt + 4, anchor="nw", fill=PAL["label"], font=("Consolas", 8),
-                      text=f"64 righe  |  note {hq_fx.note_name(lo + 1)}..{hq_fx.note_name(hi - 1)}")
+                      text=f"64 rows  |  notes {hq_fx.note_name(lo + 1)}..{hq_fx.note_name(hi - 1)}")
 
     def _fx_draw_song(self, c, s, x0, y0, w):
         h = self.hq_fx
@@ -536,9 +524,8 @@ class FxEditorMixin:
             x = x0 + i * bw
             c.create_rectangle(x, y0, x + bw - 2, y0 + 44, fill=PAL["btn"], outline=PAL["label"])
             c.create_text(x + 4, y0 + 4, anchor="nw", fill=PAL["box_txt"], font=("Consolas", 8), text=f"o{o}")
-            c.create_text(x + 4, y0 + 22, anchor="nw", fill=PAL["accent"], font=("Consolas", 9, "bold"),
-                          text=f"P{p:02d}")
-        c.create_text(x0, y0 + 56, anchor="nw", fill=PAL["label"], font=("Consolas", 9), text="ordine (o) -> pattern (P); seleziona un pattern nella lista per vederne le note")
+            c.create_text(x + 4, y0 + 22, anchor="nw", fill=PAL["accent"], font=("Consolas", 9, "bold"), text=f"P{p:02d}")
+        c.create_text(x0, y0 + 56, anchor="nw", fill=PAL["label"], font=("Consolas", 9), text="order (o) -> pattern (P); select a pattern in the list to view its notes")
 
     def _fx_extract_wav(self):
         eff = self._fx_current_effect()
@@ -558,18 +545,18 @@ class FxEditorMixin:
         except Exception as e:
             messagebox.showerror("Export", str(e))
             return
-        messagebox.showinfo("WAV", f"Salvato {os.path.basename(path)}")
+        messagebox.showinfo("WAV", f"Saved {os.path.basename(path)}")
 
     def _fx_export_midi(self):
         if self.hq_fx.kind != "rld":
-            messagebox.showinfo("MIDI", "L'export MIDI MT-32 (con SysEx dei timbri) e' per i bank RLD.")
+            messagebox.showinfo("MIDI", "MT-32 MIDI export (with timbre SysEx) is for RLD banks.")
             return
         eff = self._fx_current_effect()
         name = eff.extra["song"].name if eff and eff.kind == "song" else None
         path = filedialog.asksaveasfilename(initialfile=f"{name or 'bank'}.mid", defaultextension=".mid", filetypes=[("MIDI", "*.mid")])
         if path:
             self.hq_fx.export_midi(path, name)
-            messagebox.showinfo("MIDI", f"Salvato {os.path.basename(path)}")
+            messagebox.showinfo("MIDI", f"Saved {os.path.basename(path)}")
 
     def _fx_extract_bin(self):
         eff = self._fx_current_effect()
@@ -596,18 +583,17 @@ class FxEditorMixin:
 
     def _fx_wave_fit(self, path, done):
         if self.hq_fx.kind != "alb":
-            messagebox.showinfo("WAV", "I timbri MT-32 (RLD) non si possono ricavare da un WAV: "
-                                       "usa un editor di timbri MT-32 e importa il .bin.")
+            messagebox.showinfo(f"WAV", "MT-32 timbres (RLD) cannot be extracted from a WAV:\n use an MT-32 timbre editor and import the .bin.")
             return
         try:
             x, sr = _read_wav_float(path)
         except Exception as e:
             messagebox.showerror("WAV", str(e))
             return
-        self._fx_set_info("⏳ analisi del WAV e ricerca dei parametri FM (qualche secondo)...")
+        self._fx_set_info("⏳ analyzing WAV and matching FM parameters (a few seconds)...")
 
         def prog(p):
-            self._fx_ui(lambda: self._fx_set_info(f"⏳ ricerca parametri FM... {int(p * 100)}%"))
+            self._fx_ui(lambda: self._fx_set_info(f"⏳ matching FM parameters... {int(p * 100)}%"))
 
         def work():
             try:
@@ -623,7 +609,7 @@ class FxEditorMixin:
     def _fx_import_wav_inst(self):
         eff = self._fx_current_effect()
         if eff is None or eff.kind != "inst":
-            messagebox.showinfo("WAV", "Seleziona uno strumento (♪) da sostituire.")
+            messagebox.showinfo("WAV", "Select an instrument (♪) to replace.")
             return
         path = filedialog.askopenfilename(filetypes=[("WAV", "*.wav")])
         if not path:
@@ -645,7 +631,7 @@ class FxEditorMixin:
     def _fx_new_from_wav(self):
         h = self.hq_fx
         if h.kind != "alb":
-            messagebox.showinfo("Nuovo effetto", "Per ora i nuovi effetti si creano nei bank ALB.")
+            messagebox.showinfo("New effect", "For now new effects can only be created in ALB banks.")
             return
         path = filedialog.askopenfilename(filetypes=[("WAV", "*.wav")])
         if not path:
@@ -659,7 +645,7 @@ class FxEditorMixin:
                 k = h.add_instrument(rec, stem)
                 i = h.add_effect_song(stem, k + 1, note, min(dur, 3.0))
             except ValueError as e:
-                messagebox.showerror("Nuovo effetto", str(e))
+                messagebox.showerror("New effect", str(e))
                 return
             self._repopulate_keep(i)
             self._fx_play()
@@ -676,7 +662,7 @@ class FxEditorMixin:
             self._push_undo()
             k = h.add_instrument(src, "NEW")
         except ValueError as e:
-            messagebox.showerror("Strumento", str(e))
+            messagebox.showerror("Instrument", str(e))
             return
         idx = [e.index for e in h.effects if e.kind == "inst" and e.ref_id == k + 1][0]
         self._repopulate_keep(idx)
