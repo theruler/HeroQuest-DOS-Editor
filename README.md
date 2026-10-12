@@ -236,4 +236,3 @@ data/
 - Editor created by **TheRuler**.
 - *HeroQuest* is a trademark of its respective owners. The DOS game was developed by Gremlin Graphics.
 - This is an **unofficial fan tool**. It does **not** include any game data: you must own a legitimate copy of the game.
-- Add your preferred license in a `LICENSE` file (e.g. MIT) before publishing.
