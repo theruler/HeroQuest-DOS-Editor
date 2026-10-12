@@ -94,8 +94,7 @@ class _Player:
         else:
             for player in (["paplay"], ["aplay", "-q"], ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"]):
                 try:
-                    self.proc = subprocess.Popen(player + [path], stdout=subprocess.DEVNULL,
-                                                 stderr=subprocess.DEVNULL)
+                    self.proc = subprocess.Popen(player + [path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     return
                 except FileNotFoundError:
                     continue

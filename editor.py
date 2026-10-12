@@ -161,7 +161,7 @@ class Editor(VgaEditorMixin, QuestMapEditorMixin, ListsEditorMixin, TextEditorMi
         self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
 
     def _build_ui(self):
-        self.root.title("HeroQuest Editor v6.8.14 — by TheRuler76")
+        self.root.title("HeroQuest Editor v6.8.15 — by TheRuler76")
         self.root.configure(bg=PAL["bg"])
         self.root.minsize(1100, 660)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close_request)
@@ -207,38 +207,26 @@ class Editor(VgaEditorMixin, QuestMapEditorMixin, ListsEditorMixin, TextEditorMi
         sb.config(command=self.listbox.yview)
         self.listbox.bind("<<ListboxSelect>>", self._on_select)
         self._list_indices = []
-
-        #RIGHT
         right_container = tk.Frame(main, bg=PAL["bg"])
         right_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        #DRAW CANVAS — fixed, not scrollable
         self.canvas = tk.Canvas(
             right_container,
             width=max(GRID_COLS * CELL, 26*28+4), height=max(GRID_ROWS * CELL, 19*28+4),
             bg=PAL["bg"], highlightthickness=0, cursor="crosshair")
         self.canvas.pack(side=tk.TOP, fill=tk.X)
-
-        #SCROLLABLE EDIT PANEL below the canvas
         scroll_area = tk.Frame(right_container, bg=PAL["bg"])
         scroll_area.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
         self.scroll_canvas = tk.Canvas(scroll_area, bg=PAL["bg"], highlightthickness=0)
         self.scroll_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
         v_scrollbar = tk.Scrollbar(scroll_area, orient="vertical", command=self.scroll_canvas.yview)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.scroll_canvas.configure(yscrollcommand=v_scrollbar.set)
-
         self.right_frame = tk.Frame(self.scroll_canvas, bg=PAL["bg"])
         self.right_frame.columnconfigure(0, weight=1)
         self.scroll_canvas.create_window((0, 0), window=self.right_frame, anchor="nw")
         self.right_frame.bind("<Configure>", self._on_right_configure)
-
-        #EDIT PANEL
         self._edit_frame_container = tk.Frame(self.right_frame, bg=PAL["toolbar"])
         self._edit_frame_container.grid(row=0, column=0, sticky="ew")
-
         self.canvas.bind("<Button-1>",        self._on_click)
         self.canvas.bind("<B1-Motion>",       self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
