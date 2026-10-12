@@ -96,6 +96,9 @@ A full step-by-step guide is available in **[MANUAL.md](MANUAL.md)**.
 
 <img width="1103" height="767" alt="image" src="https://github.com/user-attachments/assets/8528654d-1d73-4540-b599-c0ecad164c07" />
 
+<img width="1098" height="898" alt="immagine" src="https://github.com/user-attachments/assets/5576ef36-2258-4892-8054-ab87c1c4bd8e" />
+
+
 ---
 
 ## Requirements
